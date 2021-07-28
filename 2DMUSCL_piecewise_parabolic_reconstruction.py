@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-2D Riemann Solver
-Piecewise Parabolic Reconstruction
+2D Riemann solver for a simple gas tube experiment
+Uses the Piecewise Parabolic Reconstruction higher-order extension of the Kurganov and Tadmor central scheme to calculate the flux at the cell boundaries
 """
 
 import numpy as np
@@ -109,11 +109,15 @@ while t<tstop:
                     rx[j][i][k]=(U[j][i][k]-U[j][i-1][k])/(U[j][i+1][k]-U[j][i][k])
                 else:
                     rx[j][i][k]=1000000
+
+    #Uses the Van-Albada flux limiter
     for k in range(0,4):
         for i in range(1,nx-1):
             for j in range(1,ny-1):
                 phix[j][i][k]=(2*rx[j][i][k])/(1+rx[j][i][k]**2)
                 phiy[j][i][k]=(2*ry[j][i][k])/(1+ry[j][i][k]**2)
+
+    #Calculate extrapolated velocities at cell boundaries
     for k in range(0,4):
         for i in range(1,nx-1):
             for j in range(1,ny-1):
@@ -121,6 +125,7 @@ while t<tstop:
                 Uxplus[j][i][k]=U[j][i][k]+0.25*phix[j][i][k]*(2/3*(U[j][i][k]-U[j][i-1][k])+4/3*(U[j][i+1][k]-U[j][i][k]))
                 Uyminus[j][i][k]=U[j][i][k]-0.25*phiy[j][i][k]*(2/3*(U[j+1][i][k]-U[j][i][k])+4/3*(U[j][i][k]-U[j-1][i][k]))
                 Uxminus[j][i][k]=U[j][i][k]-0.25*phix[j][i][k]*(2/3*(U[j][i+1][k]-U[j][i][k])+4/3*(U[j][i][k]-U[j][i-1][k]))
+        #Boundary conditions
         for i in range(0,nx):
             Uyplus[ny-1][i][k]=Uyplus[ny-2][i][k]
             Uyminus[ny-1][i][k]=Uyminus[ny-2][i][k]
@@ -131,6 +136,8 @@ while t<tstop:
             Uxminus[j][nx-1][k]=Uxminus[j][nx-2][k]
             Uxplus[j][0][k]=Uxplus[j][1][k]
             Uxminus[j][0][k]=Uxminus[j][1][k]
+
+    #Calculate flux at cell boundaries
     fluxyplus=fluxy(Uyplus)
     fluxxplus=fluxx(Uxplus)
     fluxyminus=fluxy(Uyminus)
@@ -143,6 +150,8 @@ while t<tstop:
                 fluxxtotminus[j][i][k]=0.5*(fluxxminus[j][i][k]+fluxxplus[j][i-1][k]-max(c[j][i-1],c[j][i])*(Uxminus[j][i][k]-Uxplus[j][i-1][k]))
                 fluxxtotplus[j][i][k]=0.5*(fluxxminus[j][i+1][k]+fluxxplus[j][i][k]-max(c[j][i+1],c[j][i])*(Uxminus[j][i+1][k]-Uxplus[j][i][k]))
     Ucopy=U.copy()
+
+    #Move forward time-step
     for k in range(0,4):
         for i in range(1,nx-1):
             for j in range(0,ny):
@@ -155,6 +164,8 @@ while t<tstop:
             v[j][i]=U[j][i][2]/U[j][i][0]
             rho[j][i]=U[j][i][0]
     step+=1
+
+    #Check mass conservation
     mtot=0
     for i in range(0,nx):
         for j in range(0,ny):
